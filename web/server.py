@@ -1,6 +1,7 @@
 from flask import Flask,render_template, request, session, Response, redirect
 from database import connector
 from model import entities
+from flask_socketio import SocketIO
 import json
 import time
 
@@ -8,10 +9,25 @@ db = connector.Manager()
 engine = db.createEngine()
 
 app = Flask(__name__)
-
+app.config['SECRET_KEY'] = 'vnkdjnfjknfl1232#'
+socketio = SocketIO(app)
 @app.route('/')
 def index():
     return render_template('index.html')
+#session comunication
+@app.route('/session')
+def sessions():
+    return render_template('session.html')
+
+def messageReceived(methods=['GET', 'POST']):
+    print('mensaje recibido!')
+
+@socketio.on('my event')
+def handle_my_custom_event(json, methods=['GET', 'POST']):
+    print('received my event: ' + str(json))
+    socketio.emit('my response', json, callback=messageReceived)
+#end
+
 
 @app.route('/static/<content>')
 def static_content(content):
@@ -74,7 +90,7 @@ def authenticate():
             ).filter(entities.User.username == username
             ).filter(entities.User.password == password
             ).one()
-        message = {'message': 'Authorized'}
+        message = user.username
         return Response(message, status=200, mimetype='application/json')
     except Exception:
         message = {'message': 'Unauthorized'}
